@@ -210,11 +210,11 @@ def main():
     print("Hello World")
     inputPath  = sys.argv[1]
     outputPath = sys.argv[2]
-    maxLines   = sys.argv[3]
+    maxLines   = int(sys.argv[3])
 
     print("InputPath:" + inputPath)
     print("OutputPath:" + outputPath)
-    print("MaxLines:" + maxLines )
+    print("MaxLines:{}".format( maxLines) )
 
     prep = NotePrep()
     seqLen = 10
@@ -227,10 +227,10 @@ def main():
     validDat = data[2]  # Sentence and next char
     testDat = data[3]  # Sentence and next char
 
-    print("Alphabet Size:{}".format(len(alpha)) )
-    print("Training Data Size:{}".format(len(trainDat)) )
-    print("Validation Data Size:{}".format(len(validDat)) )
-    print("Test Data Size:{}".format(len(testDat)) )
+    print("Alphabet Size:{}".format(len(alpha)))
+    print("Training Data Size:{}".format(len(trainDat[0])))
+    print("Validation Data Size:{}".format(len(validDat[0])))
+    print("Test Data Size:{}".format(len(testDat[0])))
 
     numChars = len(alpha)
 
