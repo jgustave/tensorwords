@@ -15,7 +15,8 @@ STOP_CHAR = "]"
 
 
 class NotePrep:
-    def prepData(self, path, seqLen, stepSize):
+
+    def prepData(self, path, seqLen, stepSize, maxLines):
         """
         Create test/train/validation data and determine the alphabet.
 
@@ -25,10 +26,12 @@ class NotePrep:
         :return: 
         """
         notes = open(path).read().lower()
-        notes = notes[0:10000]
 
         lines = notes.splitlines()
         random.shuffle(lines)
+
+        if maxLines < len(lines):
+            lines = lines[0:maxLines]
 
         alpha = sorted(list(set(notes)))
         alpha.append(START_CHAR)
@@ -121,9 +124,9 @@ class NotePrep:
 
         return model
 
-    def gofit(self, model, trainDat,validDat,testDat):
+    def gofit(self, model, trainDat,validDat,testDat, outputPath):
 
-        filepath = "/tmp/weights-improvement-{epoch:02d}-{loss:.2f}.hdf5"
+        filepath = outputPath + "/weights-improvement-{epoch:02d}-{loss:.2f}.hdf5"
         checkpoint = ModelCheckpoint(filepath, monitor='val_loss', verbose=1, save_weights_only=True,
                                      save_best_only=True, mode='auto')
         early_stopping = EarlyStopping(monitor='val_loss', patience=1, min_delta=0.0001, mode='auto', verbose=1)
@@ -149,38 +152,6 @@ class NotePrep:
         print("Test Loss {}".format(foo))
         print(foo)
 
-
-
-
-        # start_index = random.randint(0, len(text) - maxlen - 1)
-        #
-        # for diversity in [0.2, 0.5, 1.0, 1.2]:
-        #     print()
-        #     print('----- diversity:', diversity)
-        #
-        #     generated = ''
-        #     sentence = text[start_index: start_index + maxlen]
-        #     generated += sentence
-        #     print('----- Generating with seed: "' + sentence + '"')
-        #     sys.stdout.write(generated)
-        #
-        #     for i in range(400):  # Make a 400 character prediction.
-        #         x = np.zeros((1, maxlen, len(chars)))  # why the extra dimension of 1 sentence?
-        #         for t, char in enumerate(sentence):
-        #             x[0, t, char_indices[char]] = 1.
-        #
-        #         preds = model.predict(x, verbose=0)[0]
-        #         next_index = sample(preds, diversity)
-        #         next_char = indices_char[next_index]
-        #
-        #         generated += next_char
-        #         sentence = sentence[1:] + next_char
-        #
-        #         sys.stdout.write(next_char)
-        #         sys.stdout.flush()
-        #     print()
-        #
-        # model.save_weights("/tmp/jd-weights-improvement-{epoch:02d}-{loss:.2f}.hdf5")
         pass
 
     def generate(self,model,seedText,charToIndex,indexToChar,seqLen,isOneHotInput):
@@ -235,17 +206,31 @@ def sample(preds, temperature=1.0):
     return np.argmax(probas) # Returns index of maximum argument.
 
 def main():
+    #"/Users/jerdavis/PycharmProjects/hello/out.txt"
     print("Hello World")
+    inputPath  = sys.argv[1]
+    outputPath = sys.argv[2]
+    maxLines   = sys.argv[3]
+
+    print("InputPath:" + inputPath)
+    print("OutputPath:" + outputPath)
+    print("MaxLines:" + maxLines )
+
     prep = NotePrep()
     seqLen = 10
     stepSize = 3
     isOneHotInput = True
-    data = prep.prepData("/Users/jerdavis/PycharmProjects/hello/out.txt", seqLen, stepSize)
+    data = prep.prepData(inputPath, seqLen, stepSize, maxLines)
 
     alpha = data[0]
     trainDat = data[1]  # Sentence and next char
     validDat = data[2]  # Sentence and next char
     testDat = data[3]  # Sentence and next char
+
+    print("Alphabet Size:{}".format(len(alpha)) )
+    print("Training Data Size:{}".format(len(trainDat)) )
+    print("Validation Data Size:{}".format(len(validDat)) )
+    print("Test Data Size:{}".format(len(testDat)) )
 
     numChars = len(alpha)
 
@@ -261,7 +246,7 @@ def main():
     model = prep.createModel(seqLen,numChars)
     print(model.summary())
     # train?
-    prep.gofit(model,trainDat,validDat,testDat)
+    prep.gofit(model,trainDat,validDat,testDat, outputPath)
 
     prep.generate(model, "a bold", charToIndex, indexToChar, seqLen, isOneHotInput)
     #prep.generate(model,"a wine wit",charToIndex,indexToChar,seqLen,isOneHotInput)
