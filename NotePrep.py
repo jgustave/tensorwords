@@ -89,13 +89,13 @@ class NotePrep:
 
         return (input, output)
 
-    def createModel(self):
+    def createModel(self, seqLen, numChars):
         model = Sequential()
         model.add(
-            LSTM(128, input_shape=(maxlen, len(chars))))  # 128 memory units, shape is( sentence_length X num_chars )
+            LSTM(128, input_shape=(seqLen, numChars)))  # 128 memory units, shape is( sentence_length X num_chars )
         model.add(Dropout(0.5))
         model.add(
-            Dense(len(chars)))  # Dense output of num_chars with a softmax activation (I think this can be combined)
+            Dense(numChars))  # Dense output of num_chars with a softmax activation (I think this can be combined)
         model.add(Activation('softmax'))
 
         optimizer = RMSprop(lr=0.01)  # Optimizer to use
