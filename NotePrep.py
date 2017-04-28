@@ -2,6 +2,7 @@ import re
 import time
 import random
 import numpy as np
+import sys
 
 from keras.callbacks import ModelCheckpoint, EarlyStopping
 from keras.models import Sequential
@@ -10,7 +11,7 @@ from keras.layers import LSTM
 from keras.optimizers import RMSprop
 
 START_CHAR = "["
-END_CHAR = "]"
+STOP_CHAR = "]"
 
 
 class NotePrep:
@@ -31,10 +32,10 @@ class NotePrep:
 
         alpha = sorted(list(set(notes)))
         alpha.append(START_CHAR)
-        alpha.append(END_CHAR)
+        alpha.append(STOP_CHAR)
 
         # Prepend with start chars.. append with end char
-        prep = [START_CHAR * seqLen + x + END_CHAR for x in lines]
+        prep = [START_CHAR * seqLen + x + STOP_CHAR for x in lines]
 
         train = prep[0:int(len(prep) * .6)]
         test = prep[len(train):len(train) + int(len(prep) * .2)]
@@ -64,6 +65,7 @@ class NotePrep:
         return (sentences, nextChars)
 
     def vectorize(self, sentences, responses, charToIndex, seqLen, isOneHotInput):
+
         """
         This sets up a 1-hot encoding for inputs and outputs.
         Will also experiment with a normalized input (ID/numChars)
@@ -75,6 +77,11 @@ class NotePrep:
         :param isOneHotInput: 
         :return: 
         """
+        input  = self.vectorizeInput(sentences, charToIndex, seqLen, isOneHotInput)
+        output = self.vectorizeOutput(responses, charToIndex)
+        return( input,output)
+
+    def vectorizeInput(self, sentences, charToIndex, seqLen, isOneHotInput):
         numChars = len(charToIndex)  # Number of characters in the alphabet
 
         if isOneHotInput:
@@ -82,17 +89,24 @@ class NotePrep:
         else:
             input = np.zeros((len(sentences), seqLen), dtype=np.double)
 
-        output = np.zeros((len(sentences), numChars), dtype=np.bool)
-
         for i, sentence in enumerate(sentences):
-            output[i, charToIndex[responses[i]]] = 1
             for j, char in enumerate(sentence):
                 if isOneHotInput:
                     input[i, j, charToIndex[char]] = 1
                 else:
                     input[i, j] = charToIndex[char] / numChars
 
-        return (input, output)
+        return input
+
+    def vectorizeOutput(self, responses, charToIndex):
+        numChars = len(charToIndex)  # Number of characters in the alphabet
+
+        output = np.zeros((len(responses), numChars), dtype=np.bool)
+
+        for i, sentence in enumerate(responses):
+            output[i, charToIndex[responses[i]]] = 1
+
+        return output
 
     def createModel(self, seqLen, numChars):
         model = Sequential()
@@ -112,58 +126,99 @@ class NotePrep:
         filepath = "/tmp/weights-improvement-{epoch:02d}-{loss:.2f}.hdf5"
         checkpoint = ModelCheckpoint(filepath, monitor='val_loss', verbose=1, save_weights_only=True,
                                      save_best_only=True, mode='auto')
-        early_stopping = EarlyStopping(monitor='val_loss', patience=2, min_delta=0.0001)
+        early_stopping = EarlyStopping(monitor='val_loss', patience=1, min_delta=0.0001, mode='auto', verbose=1)
         callbacks_list = [checkpoint, early_stopping]
 
-        for iteration in range(1, 60):
+        #for iteration in range(1, 60):
+        print()
+        print('-' * 50)
+        #print('Iteration', iteration)
+        hist = model.fit(trainDat[0], trainDat[1],
+                         batch_size=128,
+                         # Batch size before backprop. Tradeoff smaller might give better model, Larger might be faster.
+                         epochs=60,
+                         callbacks=callbacks_list,
+                         shuffle=True,
+                         validation_data=(validDat[0], validDat[1]) )
+
+        print("Hello")
+        print(hist.history)
+
+        # Get loss on test data
+        foo = model.evaluate(testDat[0], testDat[1], batch_size=128, verbose=1, sample_weight=None)
+        print("Test Loss {}".format(foo))
+        print(foo)
+
+
+
+
+        # start_index = random.randint(0, len(text) - maxlen - 1)
+        #
+        # for diversity in [0.2, 0.5, 1.0, 1.2]:
+        #     print()
+        #     print('----- diversity:', diversity)
+        #
+        #     generated = ''
+        #     sentence = text[start_index: start_index + maxlen]
+        #     generated += sentence
+        #     print('----- Generating with seed: "' + sentence + '"')
+        #     sys.stdout.write(generated)
+        #
+        #     for i in range(400):  # Make a 400 character prediction.
+        #         x = np.zeros((1, maxlen, len(chars)))  # why the extra dimension of 1 sentence?
+        #         for t, char in enumerate(sentence):
+        #             x[0, t, char_indices[char]] = 1.
+        #
+        #         preds = model.predict(x, verbose=0)[0]
+        #         next_index = sample(preds, diversity)
+        #         next_char = indices_char[next_index]
+        #
+        #         generated += next_char
+        #         sentence = sentence[1:] + next_char
+        #
+        #         sys.stdout.write(next_char)
+        #         sys.stdout.flush()
+        #     print()
+        #
+        # model.save_weights("/tmp/jd-weights-improvement-{epoch:02d}-{loss:.2f}.hdf5")
+        pass
+
+    def generate(self,model,seedText,charToIndex,indexToChar,seqLen,isOneHotInput):
+        #start_index = random.randint(0, len(text) - maxlen - 1)
+
+        #TODO prepend seedText with START_CHAR as needed.
+        if len(seedText) < seqLen:
+            seedText = START_CHAR*(seqLen-len(seedText))+seedText
+
+
+
+        for diversity in [0.2, 0.5, 1.0, 1.2]:
             print()
-            print('-' * 50)
-            print('Iteration', iteration)
-            hist = model.fit(trainDat[0], trainDat[1],
-                             batch_size=128,
-                             # Batch size before backprop. Tradeoff smaller might give better model, Larger might be faster.
-                             epochs=3,
-                             callbacks=callbacks_list,
-                             shuffle=True,
-                             validation_data=(validDat[0], validDat[1]) )
+            print('----- diversity:', diversity)
 
-            print("Hello")
-            print(hist.history)
+            generated = ''
+            sentence = seedText
+            generated += sentence
+            print('----- Generating with seed: "' + sentence + '"')
+            sys.stdout.write(generated)
 
-            # Get loss on test data
-            foo = model.evaluate(testDat[0], testDat[1], batch_size=128, verbose=1, sample_weight=None)
-            print("Test Loss {}".format(foo))
-            print(foo)
+            for i in range(400):  # Make a 400 character prediction.
 
-            # start_index = random.randint(0, len(text) - maxlen - 1)
-            #
-            # for diversity in [0.2, 0.5, 1.0, 1.2]:
-            #     print()
-            #     print('----- diversity:', diversity)
-            #
-            #     generated = ''
-            #     sentence = text[start_index: start_index + maxlen]
-            #     generated += sentence
-            #     print('----- Generating with seed: "' + sentence + '"')
-            #     sys.stdout.write(generated)
-            #
-            #     for i in range(400):  # Make a 400 character prediction.
-            #         x = np.zeros((1, maxlen, len(chars)))  # why the extra dimension of 1 sentence?
-            #         for t, char in enumerate(sentence):
-            #             x[0, t, char_indices[char]] = 1.
-            #
-            #         preds = model.predict(x, verbose=0)[0]
-            #         next_index = sample(preds, diversity)
-            #         next_char = indices_char[next_index]
-            #
-            #         generated += next_char
-            #         sentence = sentence[1:] + next_char
-            #
-            #         sys.stdout.write(next_char)
-            #         sys.stdout.flush()
-            #     print()
-            #
-            # model.save_weights("/tmp/jd-weights-improvement-{epoch:02d}-{loss:.2f}.hdf5")
+                x= self.vectorizeInput([sentence],charToIndex,seqLen,isOneHotInput)
+
+                preds       = model.predict(x, verbose=0)[0] #First and only prediction
+                nextIndex   = sample(preds, diversity)
+                nextChar    = indexToChar[nextIndex]
+
+                if nextChar==STOP_CHAR:
+                    break
+
+                generated += nextChar
+                sentence = sentence[1:] + nextChar
+
+                sys.stdout.write(nextChar)
+                sys.stdout.flush()
+            print()
 
         pass
 
@@ -208,6 +263,8 @@ def main():
     # train?
     prep.gofit(model,trainDat,validDat,testDat)
 
+    prep.generate(model, "a bold", charToIndex, indexToChar, seqLen, isOneHotInput)
+    #prep.generate(model,"a wine wit",charToIndex,indexToChar,seqLen,isOneHotInput)
 
 if __name__ == '__main__':
     main()
