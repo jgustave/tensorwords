@@ -6,6 +6,9 @@ def main():
     parser = argparse.ArgumentParser(description='Do Stuff')
     parser.add_argument('--foo', type=int,default = None)
 
+    # numLayers = 2
+    # for i in range(numLayers-1):
+    #     print(i)
 
     print("")
     args = parser.parse_args()

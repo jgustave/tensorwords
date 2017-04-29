@@ -116,16 +116,17 @@ class TextGenLearn:
 
         return output
 
-    def createModel(self, seqLen, numChars):
+    def createModel(self, seqLen, numChars, lstmSize, numLayers, dropout, learnRate ):
         model = Sequential()
-        model.add(LSTM(256, input_shape=(seqLen, numChars), return_sequences=True ))
-        model.add(Dropout(0.5))
-        model.add(LSTM(256))
-        model.add(Dropout(0.5))
+        for i in range(numLayers-1):
+            model.add(LSTM(lstmSize, input_shape=(seqLen, numChars), return_sequences=True ))
+            model.add(Dropout(dropout))
+        model.add(LSTM(lstmSize))
+        model.add(Dropout(dropout))
         model.add(Dense(numChars))
         model.add(Activation('softmax'))
 
-        optimizer = RMSprop(lr=0.01)  # Optimizer to use
+        optimizer = RMSprop(lr=learnRate)  # Optimizer to use
         model.compile(loss='categorical_crossentropy',
                       optimizer=optimizer)  # Categorical since we are 1-hot categorical.
 
@@ -250,7 +251,15 @@ def main():
     parser.add_argument('--maxlines',type=int,default=2000 )
     parser.add_argument('--epoch', type=int, default=0)
     parser.add_argument('--load', default=None)
+    parser.add_argument('--seqlen', type=int, default=10)
+    parser.add_argument('--step', type=int, default=3)
+    parser.add_argument('--onehot', type=bool, default=True)
+    parser.add_argument('--lstmsize', type=int, default=128)
+    parser.add_argument('--numlayers', type=int, default=2)
+    parser.add_argument('--dropout', type=float, default=0.0)
+    parser.add_argument('--learnrate', type=float, default=0.01)
 
+    #args.lstmSize, args.numLayers, args.dropout, args.learnRate
     args = parser.parse_args()
     print(args)
 
@@ -265,9 +274,9 @@ def main():
     print("MaxLines:{}".format( maxLines) )
 
     prep = TextGenLearn()
-    seqLen = 10
-    stepSize = 3
-    isOneHotInput = True
+    seqLen = args.seqlen
+    stepSize = args.step
+    isOneHotInput = args.onehot
     data = prep.prepData(inputPath, seqLen, stepSize, maxLines)
 
     alpha = data[0]
@@ -292,7 +301,7 @@ def main():
 
     # Create Model
     if loadModelName is None:
-        model = prep.createModel(seqLen,numChars)
+        model = prep.createModel(seqLen,numChars,args.lstmsize,args.numlayers,args.dropout,args.learnrate)
     else:
         model = load_model(loadModelName)
 
