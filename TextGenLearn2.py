@@ -6,7 +6,7 @@ import sys
 
 from keras.callbacks import ModelCheckpoint, EarlyStopping
 from keras.models import Sequential, load_model
-from keras.layers import Dense, Activation, Dropout
+from keras.layers import Dense, Activation, Dropout, Embedding, TimeDistributed
 from keras.layers import LSTM
 from keras.optimizers import RMSprop
 import argparse
@@ -118,6 +118,7 @@ class TextGenLearn:
 
     def createModel(self, seqLen, numChars, lstmSize, numLayers, dropout, learnRate ):
         model = Sequential()
+
         for i in range(numLayers-1):
             model.add(LSTM(lstmSize, input_shape=(seqLen, numChars), return_sequences=True ))
             model.add(Dropout(dropout))
@@ -252,7 +253,7 @@ def main():
     parser.add_argument('--epoch', type=int, default=0)
     parser.add_argument('--load', default=None)
     parser.add_argument('--seqlen', type=int, default=10)
-    parser.add_argument('--step', type=int, default=3)
+    parser.add_argument('--step', type=int, default=1)
     parser.add_argument('--onehot', type=bool, default=True)
     parser.add_argument('--lstmsize', type=int, default=128)
     parser.add_argument('--numlayers', type=int, default=2)
