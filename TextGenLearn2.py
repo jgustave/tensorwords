@@ -9,6 +9,10 @@ from keras.models import Sequential, load_model
 from keras.layers import Dense, Activation, Dropout
 from keras.layers import LSTM
 from keras.optimizers import RMSprop
+import argparse
+import gzip
+
+
 
 START_CHAR = "["
 STOP_CHAR = "]"
@@ -25,7 +29,7 @@ class TextGenLearn:
         :param stepSize: 
         :return: 
         """
-        notes = open(path).read().lower()
+        notes = gzip.open(path,'rt').read().lower()
 
         lines = notes.splitlines()
         random.shuffle(lines)
@@ -240,11 +244,21 @@ def sample(preds, temperature=1.0):
 def main():
     #"/Users/jerdavis/PycharmProjects/hello/out.txt"
     print("Hello World")
-    inputPath  = sys.argv[1]
-    outputPath = sys.argv[2]
-    maxLines   = int(sys.argv[3])
-    loadModelName  = None #sys.argv[4] # TODO use arg parse
-    nextEpoch =  0 # for continuing
+    parser = argparse.ArgumentParser(description='Do Stuff')
+    parser.add_argument('--input', default = "./wine_corpus.txt.gz")
+    parser.add_argument('--output',default="./out")
+    parser.add_argument('--maxlines',type=int,default=2000 )
+    parser.add_argument('--epoch', type=int, default=0)
+    parser.add_argument('--load', default=None)
+
+    args = parser.parse_args()
+    print(args)
+
+    inputPath       = args.input
+    outputPath      = args.output
+    maxLines        = args.maxlines
+    loadModelName   = args.load
+    nextEpoch       = args.epoch
 
     print("InputPath:" + inputPath)
     print("OutputPath:" + outputPath)
