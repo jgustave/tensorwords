@@ -122,7 +122,12 @@ class TextGenLearn:
         for i in range(numLayers-1):
             model.add(LSTM(lstmSize, input_shape=(seqLen, numChars), return_sequences=True ))
             model.add(Dropout(dropout))
-        model.add(LSTM(lstmSize))
+
+        if numLayers == 1:
+            model.add(LSTM(lstmSize, input_shape=(seqLen, numChars)))
+        else:
+            model.add(LSTM(lstmSize))
+
         model.add(Dropout(dropout))
         model.add(Dense(numChars))
         model.add(Activation('softmax'))
@@ -256,7 +261,7 @@ def main():
     parser.add_argument('--step', type=int, default=1)
     parser.add_argument('--onehot', type=bool, default=True)
     parser.add_argument('--lstmsize', type=int, default=128)
-    parser.add_argument('--numlayers', type=int, default=2)
+    parser.add_argument('--numlayers', type=int, default=1)
     parser.add_argument('--dropout', type=float, default=0.0)
     parser.add_argument('--learnrate', type=float, default=0.01)
 

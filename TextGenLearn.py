@@ -195,13 +195,11 @@ class TextGenLearn:
 
         pass
 
-    def generateFoo(self,model,seedText,charToIndex,indexToChar,seqLen,isOneHotInput, diversity):
+    def generateFoo(self,model,seedText,charToIndex,indexToChar,seqLen,isOneHotInput, diversity,maxStrLen):
 
 
         if len(seedText) < seqLen:
             seedText = START_CHAR*(seqLen-len(seedText))+seedText
-
-        maxStrLen = 400
 
         generated = ''
         sentence = seedText
