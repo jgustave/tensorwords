@@ -5,7 +5,7 @@ import numpy as np
 import sys
 
 from keras.callbacks import ModelCheckpoint, EarlyStopping
-from keras.models import Sequential
+from keras.models import Sequential, load_model
 from keras.layers import Dense, Activation, Dropout
 from keras.layers import LSTM
 from keras.optimizers import RMSprop
@@ -14,7 +14,7 @@ START_CHAR = "["
 STOP_CHAR = "]"
 
 
-class NotePrep:
+class TextGenLearn:
 
     def prepData(self, path, seqLen, stepSize, maxLines):
         """
@@ -33,10 +33,11 @@ class NotePrep:
         if maxLines < len(lines):
             lines = lines[0:maxLines]
 
-        alpha = sorted(list(set(notes)))
-        alpha.append(START_CHAR)
-        alpha.append(STOP_CHAR)
-
+        temp = list(set(notes))
+        temp.append(START_CHAR)
+        temp.append(STOP_CHAR)
+        alpha = sorted( temp )
+        print(alpha)
         # Prepend with start chars.. append with end char
         prep = [START_CHAR * seqLen + x + STOP_CHAR for x in lines]
 
@@ -124,10 +125,10 @@ class NotePrep:
 
         return model
 
-    def gofit(self, model, trainDat,validDat,testDat, outputPath):
+    def gofit(self, model, trainDat,validDat,testDat, outputPath, nextEpoch):
 
         filepath = outputPath + "/weights-improvement-{epoch:02d}-{loss:.2f}.hdf5"
-        checkpoint = ModelCheckpoint(filepath, monitor='val_loss', verbose=1, save_weights_only=True,
+        checkpoint = ModelCheckpoint(filepath, monitor='val_loss', verbose=1, save_weights_only=False,
                                      save_best_only=True, mode='auto')
         early_stopping = EarlyStopping(monitor='val_loss', patience=1, min_delta=0.0001, mode='auto', verbose=1)
         callbacks_list = [checkpoint, early_stopping]
@@ -142,7 +143,8 @@ class NotePrep:
                          epochs=60,
                          callbacks=callbacks_list,
                          shuffle=True,
-                         validation_data=(validDat[0], validDat[1]) )
+                         validation_data=(validDat[0], validDat[1]),
+                         initial_epoch=nextEpoch)
 
         print("Hello")
         print(hist.history)
@@ -193,6 +195,34 @@ class NotePrep:
 
         pass
 
+    def generateFoo(self,model,seedText,charToIndex,indexToChar,seqLen,isOneHotInput, diversity):
+
+
+        if len(seedText) < seqLen:
+            seedText = START_CHAR*(seqLen-len(seedText))+seedText
+
+        maxStrLen = 400
+
+        generated = ''
+        sentence = seedText
+        generated += sentence
+
+        for i in range(maxStrLen):  # Make a 400 character prediction.
+
+            x= self.vectorizeInput([sentence],charToIndex,seqLen,isOneHotInput)
+
+            preds       = model.predict(x, verbose=0)[0] #First and only prediction
+            nextIndex   = sample(preds, diversity)
+            nextChar    = indexToChar[nextIndex]
+
+            if nextChar==STOP_CHAR:
+                break
+
+            generated += nextChar
+            sentence = sentence[1:] + nextChar
+
+        return generated
+
 def sample(preds, temperature=1.0):
     # helper function to sample an index from a probability array
     preds = np.asarray(preds).astype('float64')
@@ -211,12 +241,14 @@ def main():
     inputPath  = sys.argv[1]
     outputPath = sys.argv[2]
     maxLines   = int(sys.argv[3])
+    loadModelName  = None #sys.argv[4] # TODO use arg parse
+    nextEpoch =  0 # for continuing
 
     print("InputPath:" + inputPath)
     print("OutputPath:" + outputPath)
     print("MaxLines:{}".format( maxLines) )
 
-    prep = NotePrep()
+    prep = TextGenLearn()
     seqLen = 10
     stepSize = 3
     isOneHotInput = True
@@ -243,10 +275,14 @@ def main():
     testDat = prep.vectorize(testDat[0], testDat[1], charToIndex, seqLen, isOneHotInput)
 
     # Create Model
-    model = prep.createModel(seqLen,numChars)
+    if loadModelName is None:
+        model = prep.createModel(seqLen,numChars)
+    else:
+        model = load_model(loadModelName)
+
     print(model.summary())
     # train?
-    prep.gofit(model,trainDat,validDat,testDat, outputPath)
+    prep.gofit(model,trainDat,validDat,testDat, outputPath, nextEpoch)
 
     prep.generate(model, "a bold", charToIndex, indexToChar, seqLen, isOneHotInput)
     #prep.generate(model,"a wine wit",charToIndex,indexToChar,seqLen,isOneHotInput)
