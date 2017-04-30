@@ -264,7 +264,7 @@ def main():
     parser.add_argument('--numlayers', type=int, default=1)
     parser.add_argument('--dropout', type=float, default=0.0)
     parser.add_argument('--learnrate', type=float, default=0.01)
-    parser.add_argument('--early', type=int, default=3)
+    parser.add_argument('--patience', type=int, default=3)
 
     #args.lstmSize, args.numLayers, args.dropout, args.learnRate
     args = parser.parse_args()
@@ -314,7 +314,7 @@ def main():
 
     print(model.summary())
     # train?
-    prep.gofit(model,trainDat,validDat,testDat, outputPath, nextEpoch, arg.early)
+    prep.gofit(model,trainDat,validDat,testDat, outputPath, nextEpoch, args.patience)
 
     prep.generate(model, "a bold", charToIndex, indexToChar, seqLen, isOneHotInput)
     #prep.generate(model,"a wine wit",charToIndex,indexToChar,seqLen,isOneHotInput)
