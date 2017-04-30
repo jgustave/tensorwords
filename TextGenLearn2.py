@@ -138,12 +138,12 @@ class TextGenLearn:
 
         return model
 
-    def gofit(self, model, trainDat,validDat,testDat, outputPath, nextEpoch):
+    def gofit(self, model, trainDat,validDat,testDat, outputPath, nextEpoch, earlyPatience):
 
         filepath = outputPath + "/weights-improvement-{epoch:02d}-{loss:.2f}.hdf5"
         checkpoint = ModelCheckpoint(filepath, monitor='val_loss', verbose=1, save_weights_only=False,
                                      save_best_only=True, mode='auto')
-        early_stopping = EarlyStopping(monitor='val_loss', patience=1, min_delta=0.0001, mode='auto', verbose=1)
+        early_stopping = EarlyStopping(monitor='val_loss', patience=earlyPatience, min_delta=0.0001, mode='auto', verbose=1)
         callbacks_list = [checkpoint, early_stopping]
 
         #for iteration in range(1, 60):
@@ -264,6 +264,7 @@ def main():
     parser.add_argument('--numlayers', type=int, default=1)
     parser.add_argument('--dropout', type=float, default=0.0)
     parser.add_argument('--learnrate', type=float, default=0.01)
+    parser.add_argument('--early', type=int, default=3)
 
     #args.lstmSize, args.numLayers, args.dropout, args.learnRate
     args = parser.parse_args()
@@ -313,7 +314,7 @@ def main():
 
     print(model.summary())
     # train?
-    prep.gofit(model,trainDat,validDat,testDat, outputPath, nextEpoch)
+    prep.gofit(model,trainDat,validDat,testDat, outputPath, nextEpoch, arg.early)
 
     prep.generate(model, "a bold", charToIndex, indexToChar, seqLen, isOneHotInput)
     #prep.generate(model,"a wine wit",charToIndex,indexToChar,seqLen,isOneHotInput)
