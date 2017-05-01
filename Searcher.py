@@ -1,4 +1,4 @@
-""" use a simple work queue store results to S3 """
+""" TODO: use a simple work queue store results to S3 """
 import boto3
 import argparse
 

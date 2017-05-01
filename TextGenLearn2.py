@@ -6,7 +6,7 @@ import sys
 
 from keras.callbacks import ModelCheckpoint, EarlyStopping
 from keras.models import Sequential, load_model
-from keras.layers import Dense, Activation, Dropout, Embedding, TimeDistributed
+from keras.layers import Dense, Activation, Dropout, Embedding, TimeDistributed, regularizers
 from keras.layers import LSTM
 from keras.optimizers import RMSprop
 import argparse
@@ -120,13 +120,28 @@ class TextGenLearn:
         model = Sequential()
 
         for i in range(numLayers-1):
-            model.add(LSTM(lstmSize, input_shape=(seqLen, numChars), return_sequences=True ))
+            model.add(LSTM(lstmSize,
+                           input_shape=(seqLen, numChars),
+                           return_sequences=True
+                           # kernel_regularizer=regularizers.l2(0.01),
+                           # activity_regularizer = regularizers.l2(0.01),
+                           # recurrent_regularizer=regularizers.l2(0.01)
+                           ))
             model.add(Dropout(dropout))
 
         if numLayers == 1:
-            model.add(LSTM(lstmSize, input_shape=(seqLen, numChars)))
+            model.add(LSTM(lstmSize,
+                           input_shape=(seqLen, numChars)
+                           # kernel_regularizer=regularizers.l2(0.01),
+                           # activity_regularizer=regularizers.l2(0.01),
+                           # recurrent_regularizer=regularizers.l2(0.01)
+            ))
         else:
-            model.add(LSTM(lstmSize))
+            model.add(LSTM(lstmSize
+                           # kernel_regularizer=regularizers.l2(0.01),
+                           # activity_regularizer = regularizers.l2(0.01),
+                           # recurrent_regularizer=regularizers.l2(0.01)
+            ))
 
         model.add(Dropout(dropout))
         model.add(Dense(numChars))

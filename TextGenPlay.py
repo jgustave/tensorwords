@@ -16,6 +16,7 @@ def main() :
     parser.add_argument('--input', default="./out/weights-improvement-03-2.20.hdf5")
     parser.add_argument('--diversity', type=float, default=0.8)
     parser.add_argument('--maxlen', type=int, default=1024)
+    parser.add_argument('--seqlen', type=int, default=10)
     args = parser.parse_args()
     print(args)
 
@@ -28,13 +29,12 @@ def main() :
     indexToChar = dict((i, c) for i, c in enumerate(STATIC_ALPHA))
     charToIndex = dict((c, i) for i, c in enumerate(STATIC_ALPHA))
     isOneHotInput = True
-    seqLen = 10
 
 
     while True:
         seedText = input('Seed Text: ').lower()
 
-        text = prep.generateFoo(model, seedText, charToIndex, indexToChar, seqLen, isOneHotInput, diversity, args.maxlen)
+        text = prep.generateFoo(model, seedText, charToIndex, indexToChar, args.seqlen, isOneHotInput, diversity, args.maxlen)
 
         print(text)
         print("-"*50)
