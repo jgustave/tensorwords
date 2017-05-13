@@ -32,6 +32,7 @@ class TextGenLearn:
         """
         alpha = set()
         numSentences = 0
+        lineCount = 0
 
         with gzip.open(path,'rt') as f:
             for line in f:
@@ -39,6 +40,9 @@ class TextGenLearn:
                 # len+1 because of start/stop chars
                 numSentences+=len(line)+1
                 alpha |= set(line)
+                lineCount+=1
+                if lineCount >= maxLines:
+                    break
 
         alpha.update(START_CHAR)
         alpha.update(STOP_CHAR)
@@ -68,6 +72,9 @@ class TextGenLearn:
                     for j, char in enumerate(s):
                         input[sid, j, charToIndex[char]] = 1
                     sid=sid+1
+
+                if sid >= numSentences:
+                    break
 
         return input
 
@@ -99,6 +106,9 @@ class TextGenLearn:
                 for i, sentence in enumerate(responses):
                     output[sid, charToIndex[responses[i]]] = 1
                     sid+=1
+
+                if sid >= numSentences:
+                    break
 
         return output
 
@@ -226,32 +236,30 @@ def main():
     print(args)
 
     prep = TextGenLearn()
-    responses = prep.prePrep("/Users/jerdavis/devhome/tensorwords2/small.txt.gz", args.seqlen, 100000)
+    prepData = prep.prePrep(args.input, args.seqlen, args.maxlines)
 
-    numSentences = responses[1]
-    alpha = responses[0]
+    numSentences = prepData[1]
+    alpha = prepData[0]
     numChars = len(alpha)
 
-    print("num responses {}".format(numSentences))
+    print("Total Sentences {}".format(numSentences))
     cutoff = int(numSentences*0.8)
-    print("cutoff {}".format(cutoff))
+    print("train/valid cutoff {}".format(cutoff))
     print("Alphabet Size:{}".format(len(alpha)))
-    #     print("Training Data Size:{}".format(len(trainDat[0])))
-    #     print("Validation Data Size:{}".format(len(validDat[0])))
-    #     print("Test Data Size:{}".format(len(testDat[0])))
+    print(alpha)
 
 
     indexToChar = dict((i, c) for i, c in enumerate(alpha))
     charToIndex = dict((c, i) for i, c in enumerate(alpha))
 
-    input = prep.vectorizeInputFoo("/Users/jerdavis/devhome/tensorwords2/small.txt.gz",numSentences,charToIndex,args.seqlen)
-    responses = prep.vectorizeOutputFoo("/Users/jerdavis/devhome/tensorwords2/small.txt.gz", numSentences, charToIndex, args.seqlen)
+    input = prep.vectorizeInputFoo(args.input,numSentences,charToIndex,args.seqlen)
+    prepData = prep.vectorizeOutputFoo(args.input, numSentences, charToIndex, args.seqlen)
 
 
     inputTrain = input[0:cutoff]
     inputValid = input[cutoff:numSentences]
-    responseTrain = responses[0:cutoff]
-    responseValid = responses[cutoff:numSentences]
+    responseTrain = prepData[0:cutoff]
+    responseValid = prepData[cutoff:numSentences]
 
     print("Training Data Size:{}".format(len(inputTrain)))
     print("Validation Data Size:{}".format(len(inputValid)))
