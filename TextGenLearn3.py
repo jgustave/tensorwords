@@ -12,7 +12,7 @@ from keras.optimizers import RMSprop
 import argparse
 import gzip
 
-
+from multi_gpu import make_parallel
 
 START_CHAR = "["
 STOP_CHAR = "]"
@@ -149,7 +149,7 @@ class TextGenLearn:
 
         return model
 
-    def gofit(self, model, trainDat,validDat,outputPath, nextEpoch, earlyPatience):
+    def gofit(self, model, trainDat,validDat,outputPath, nextEpoch, earlyPatience, batchSize):
 
         filepath = outputPath + "/weights-improvement-{epoch:02d}-{loss:.2f}.hdf5"
         checkpoint = ModelCheckpoint(filepath, monitor='val_loss', verbose=1, save_weights_only=False,
@@ -162,7 +162,7 @@ class TextGenLearn:
         print('-' * 50)
         #print('Iteration', iteration)
         hist = model.fit(trainDat[0], trainDat[1],
-                         batch_size=128,
+                         batch_size=batchSize,
                          # Batch size before backprop. Tradeoff smaller might give better model, Larger might be faster.
                          epochs=60,
                          callbacks=callbacks_list,
@@ -230,6 +230,8 @@ def main():
     parser.add_argument('--dropout', type=float, default=0.0)
     parser.add_argument('--learnrate', type=float, default=0.01)
     parser.add_argument('--patience', type=int, default=3)
+    parser.add_argument('--parallel', type=int, default=1)
+    parser.add_argument('--batchsize', type=int, default=128)
 
     #args.lstmSize, args.numLayers, args.dropout, args.learnRate
     args = parser.parse_args()
@@ -271,9 +273,14 @@ def main():
     else:
         model = load_model(args.load)
 
+    batchSize = args.batchsize
+    if args.parallel > 1:
+        model = make_parallel(model,args.parallel)
+        batchSize *= args.parallel
+
     print(model.summary())
     # train?
-    prep.gofit(model,(inputTrain,responseTrain),(inputValid,responseValid), args.output, args.epoch, args.patience)
+    prep.gofit(model,(inputTrain,responseTrain),(inputValid,responseValid), args.output, args.epoch, args.patience, batchSize)
 
 if __name__ == '__main__':
     main()
