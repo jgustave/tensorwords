@@ -15,7 +15,7 @@ Hints of red fruit and a bit of minerality. not over the next day. still a bit o
 
 What really blows my mind is that it took 50 peta flop to generate that NN (while I slept), and it cost me a dollar.
 
-** Changed to Sequence length 30, which is producing a better model. **
+## Changed to Sequence length 30, which is producing a better model. ##
 
 tasted at the way which spanish had a lot of grippy tannins. decent finish. taste is good marks abver. not bad for the money.
 
