@@ -112,7 +112,7 @@ class TextGenLearn:
 
         return output
 
-    def createModel(self, seqLen, numChars, lstmSize, numLayers, dropout, learnRate ):
+    def createModel(self, seqLen, numChars, lstmSize, numLayers, dropout, learnRate, parallel ):
         model = Sequential()
 
         for i in range(numLayers-1):
@@ -142,6 +142,9 @@ class TextGenLearn:
         model.add(Dropout(dropout))
         model.add(Dense(numChars))
         model.add(Activation('softmax'))
+
+        if parallel > 1:
+            model = make_parallel(model, parallel)
 
         optimizer = RMSprop(lr=learnRate)  # Optimizer to use
         model.compile(loss='categorical_crossentropy',
@@ -238,6 +241,7 @@ def main():
     print(args)
 
     prep = TextGenLearn()
+
     prepData = prep.prePrep(args.input, args.seqlen, args.maxlines)
 
     numSentences = prepData[1]
@@ -248,8 +252,9 @@ def main():
     cutoff = int(numSentences*0.8)
     print("train/valid cutoff {}".format(cutoff))
     print("Alphabet Size:{}".format(len(alpha)))
-    print(alpha)
 
+    sys.stdout.flush()
+    sys.stderr.flush()
 
     indexToChar = dict((i, c) for i, c in enumerate(alpha))
     charToIndex = dict((c, i) for i, c in enumerate(alpha))
@@ -269,13 +274,12 @@ def main():
 
     # Create Model
     if args.load is None:
-        model = prep.createModel(args.seqlen,numChars,args.lstmsize,args.numlayers,args.dropout,args.learnrate)
+        model = prep.createModel(args.seqlen,numChars,args.lstmsize,args.numlayers,args.dropout,args.learnrate, args.parallel)
     else:
         model = load_model(args.load)
 
     batchSize = args.batchsize
     if args.parallel > 1:
-        model = make_parallel(model,args.parallel)
         batchSize *= args.parallel
 
     print(model.summary())
