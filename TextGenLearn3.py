@@ -20,8 +20,13 @@ STOP_CHAR = "]"
 #python3 TextGenLearn2.py /home/ubuntu/devhome/tensorwords2/wine_corpus.txt /home/ubuntu/devhome/tensorwords2/out2/ 200000
 class TextGenLearn:
 
+#sudo vi /etc/fstab
+#/dev/xvda3       none    swap    sw  0       0
+#sudo swapoff -a
+#sudo /sbin/mkswap /dev/xvdba
+#sudo swapon /dev/xvdba
 
-    def prePrep(self, path, seqLen, maxLines):
+    def prePrep(self, path, seqLen, maxLines, offset):
         """
         Get the alphabet and the number of sentences (assuming stepSize of 1) 
         :param path: 
@@ -33,16 +38,21 @@ class TextGenLearn:
         alpha = set()
         numSentences = 0
         lineCount = 0
+        preCount = 0
 
         with gzip.open(path,'rt') as f:
             for line in f:
                 line=line.lower().rstrip()
-                # len+1 because of start/stop chars
-                numSentences+=len(line)+1
                 alpha |= set(line)
-                lineCount+=1
-                if lineCount >= maxLines:
-                    break
+
+                if( preCount < offset ):
+                    preCount+=1
+                else:
+                    # len+1 because of start/stop chars
+                    numSentences+=len(line)+1
+                    lineCount+=1
+                    if lineCount >= maxLines:
+                        break
 
         alpha.update(START_CHAR)
         alpha.update(STOP_CHAR)
@@ -50,8 +60,9 @@ class TextGenLearn:
 
         return (alpha, numSentences)
 
-    def vectorizeInputFoo(self, path, numSentences, charToIndex, seqLen):
+    def vectorizeInputFoo(self, path, numSentences, charToIndex, seqLen, offset):
         numChars = len(charToIndex)  # Number of characters in the alphabet
+        preCount = 0
 
         with gzip.open(path, 'rt') as f:
 
@@ -64,17 +75,19 @@ class TextGenLearn:
                 #TODO: handle newline and length -1
                 sentences = []
                 line = START_CHAR * seqLen + line.rstrip().lower() + STOP_CHAR
-                for i in range(0, len(line) - seqLen):
-                     sentences.append(line[i:i + seqLen])
+                if preCount < offset:
+                    preCount+=1
+                else:
+                    for i in range(0, len(line) - seqLen):
+                         sentences.append(line[i:i + seqLen])
 
+                    for i, s in enumerate(sentences):
+                        for j, char in enumerate(s):
+                            input[sid, j, charToIndex[char]] = 1
+                        sid=sid+1
 
-                for i, s in enumerate(sentences):
-                    for j, char in enumerate(s):
-                        input[sid, j, charToIndex[char]] = 1
-                    sid=sid+1
-
-                if sid >= numSentences:
-                    break
+                    if sid >= numSentences:
+                        break
 
         return input
 
@@ -90,9 +103,10 @@ class TextGenLearn:
         return input
 
 
-    def vectorizeOutputFoo(self, path, numSentences, charToIndex, seqLen):
+    def vectorizeOutputFoo(self, path, numSentences, charToIndex, seqLen, offset):
         numChars = len(charToIndex)  # Number of characters in the alphabet
         sid = 0
+        preCount = 0
 
         with gzip.open(path, 'rt') as f:
             output = np.zeros((numSentences, numChars), dtype=np.bool)
@@ -100,15 +114,18 @@ class TextGenLearn:
             for line in f:
                 responses = []
                 line = START_CHAR * seqLen + line.rstrip().lower() + STOP_CHAR
-                for i in range(0, len(line) - seqLen ):
-                    responses.append(line[i + seqLen])
+                if preCount < offset:
+                    preCount+=1
+                else:
+                    for i in range(0, len(line) - seqLen ):
+                        responses.append(line[i + seqLen])
 
-                for i, sentence in enumerate(responses):
-                    output[sid, charToIndex[responses[i]]] = 1
-                    sid+=1
+                    for i, sentence in enumerate(responses):
+                        output[sid, charToIndex[responses[i]]] = 1
+                        sid+=1
 
-                if sid >= numSentences:
-                    break
+                    if sid >= numSentences:
+                        break
 
         return output
 
@@ -126,7 +143,7 @@ class TextGenLearn:
             model.add(Dropout(dropout))
 
         if numLayers == 1:
-            model.add(LSTM(lstmSize,
+            model.add(LSTM(lstmSize, 
                            input_shape=(seqLen, numChars)
                            # kernel_regularizer=regularizers.l2(0.01),
                            # activity_regularizer=regularizers.l2(0.01),
@@ -223,6 +240,7 @@ def main():
     parser.add_argument('--input', default = "./wine_corpus.txt.gz")
     parser.add_argument('--output',default="./out")
     parser.add_argument('--maxlines',type=int,default=2000 )
+    parser.add_argument('--offset', type=int, default=0)
     parser.add_argument('--epoch', type=int, default=0)
     parser.add_argument('--load', default=None)
     parser.add_argument('--seqlen', type=int, default=10)
@@ -242,7 +260,7 @@ def main():
 
     prep = TextGenLearn()
 
-    prepData = prep.prePrep(args.input, args.seqlen, args.maxlines)
+    prepData = prep.prePrep(args.input, args.seqlen, args.maxlines, args.offset )
 
     numSentences = prepData[1]
     alpha = prepData[0]
@@ -259,8 +277,8 @@ def main():
     indexToChar = dict((i, c) for i, c in enumerate(alpha))
     charToIndex = dict((c, i) for i, c in enumerate(alpha))
 
-    input = prep.vectorizeInputFoo(args.input,numSentences,charToIndex,args.seqlen)
-    prepData = prep.vectorizeOutputFoo(args.input, numSentences, charToIndex, args.seqlen)
+    input = prep.vectorizeInputFoo(args.input,numSentences,charToIndex,args.seqlen,args.offset)
+    prepData = prep.vectorizeOutputFoo(args.input, numSentences, charToIndex, args.seqlen,args.offset)
 
 
     inputTrain = input[0:cutoff]
